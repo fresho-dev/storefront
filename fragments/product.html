@@ -1,0 +1,109 @@
+<section class="flex flex-col items-center justify-center h-full" id="product" @vue:mounted="main">
+  <div class="max-w-3xl">
+    <div class="flex flex-col items-center relative w-full max-h-half">
+      <i @click="scrollProductImage(-1)" v-show="!loadingImage"
+        class="fa fa-arrow-left cursor-pointer absolute top-[50%] left-6 bg-white bg-opacity-20 p-2 -mt-2 rounded-full"></i>
+      <i @click="scrollProductImage(+1)" v-show="!loadingImage"
+        class="fa fa-arrow-right cursor-pointer absolute top-[50%] right-6 bg-white bg-opacity-20 p-2 -mt-2 rounded-full"></i>
+      <img class="object-contain mt-8 max-h-[400px]" v-show="!loadingImage"
+        v-bind:src="productSelection?.images?.at(currentImageIndex)?.src ?? ''" />
+      <img src="./static/loading.gif" class="w-8 h-8 absolute top-[50%] left-[50%] mt-8 -ml-8" v-show="loadingImage" />
+    </div>
+    <div class="flex flex-col px-6 py-2 overflow-hidden">
+      <!-- <div class="font-weight-700 text-md w-64">${{productSelection?.price / 100}}</div> -->
+      <div class="font-weight-600 text-md mb-2 text-gray-900 text-center">{{productSelection?.title}}</div>
+      <div class="text-gray-700 text-base text-sm" v-html="productSelection?.customizedDescription ?? '...'"></div>
+    </div>
+    <div class="px-6 pt-4 pb-2">
+      <button
+        class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+        Buy for ${{productSelection?.variants?.at(0)?.price}}
+      </button>
+    </div>
+</section>
+
+<script async type="module">
+
+  // TODO: Server-side load of prompt.
+  const prePrompt = `
+    You work for an online e-commerce store. Your task is to write a very concise product description tailored to an audience.
+    The audience has a set of attributes about themselves, and a set of interests related to what they are looking for.
+    Do not overstate the product features and do not hallucinate features about the product, be objective and stay simple.
+    If the product is not a good match for the audience, advertise how good it would be as a gift for the appropriate audience.
+    For example, don't try to sell women's apparel such as bras, purses or women's shoes to a man; instead,
+    try to suggest purchasing the women's apparel as a gift to a woman. `;
+
+  const vm = PetiteVue.createApp({
+    loadingImage: true,
+    currentImageIndex: 0,
+
+    geolocation: null,
+    productChoices: [],
+    audienceSegments: [],
+    productSelection: null,
+
+    async main() {
+
+      // Load storefront details.
+      const params = new URL(window.location.href).searchParams;
+      const storefrontUrl = `https://functions.fresho.workers.dev/merchant/storefront/data.json`;
+      const storefrontOpts = `uuid=${params.get('uuid')}&fieldnames=audiences,platform`;
+      const data = await fetch(`${storefrontUrl}?${storefrontOpts}`).then(res => res.json());
+
+      // Load audience details.
+      this.geolocation = params.get('fresho_audience_geolocation');
+      const audienceNames = params.get('fresho_audience_segments')?.split(',') || [];
+      this.audienceSegments = data.audiences.filter(x => audienceNames.includes(x.parameter));
+      console.log(data.audiences);
+
+      // Find the desired product.
+      const platform = data.platform || 'shopify';
+      const productUrl = `https://functions.fresho.workers.dev/merchant/storefront/product.json`;
+      const productOpts = `uuid=${params.get('uuid')}&product_id=${params.get('product')}`;
+      this.productSelection = await fetch(`${productUrl}?${productOpts}`).then(res => res.json());
+      console.log('product', this.productSelection);
+
+      // Display the first image.
+      this.loadProductImage();
+
+      // Customize the product description.
+      await this.customizeProductDescription();
+    },
+
+    loadProductImage() {
+      this.loadingImage = true;
+      const image = new Image();
+      image.onload = () => this.loadingImage = false;
+      image.src = this.productSelection?.images?.at(this.currentImageIndex)?.src;
+    },
+
+    scrollProductImage(offset) {
+      this.loadingImage = true;
+      this.currentImageIndex = (this.currentImageIndex + offset) % this.productSelection?.images?.length ?? 0;
+      const image = new Image();
+      image.onload = () => this.loadingImage = false;
+      image.src = this.productSelection?.images?.at(this.currentImageIndex)?.src;
+    },
+
+    async customizeProductDescription() {
+      const fullPrompt = `
+          ${prePrompt}
+          Audience location: ${this.geolocation}.
+          Audience attributes: ${this.audienceSegments.join(', ')}.
+          Product overview: ${this.productSelection.title}. ${this.productSelection.body_html}.
+          Customized product description:\n\n
+        `;
+      if (this.audienceSegments.length === 0) {
+        this.productSelection.customizedDescription = this.productSelection.body_html;
+      } else {
+        this.productSelection.customizedDescription = '...';
+        const completionUrl = `https://functions.fresho.workers.dev/genai/openai/completion.txt`;
+        // const completionUrl = `${workerRoot}/genai/anthropic/completion.txt?model=claude-2`;
+        const res = await fetch(completionUrl, { method: 'POST', body: fullPrompt });
+        this.productSelection.customizedDescription = await res.text();
+      }
+    },
+
+  }).mount('#product');
+
+</script>

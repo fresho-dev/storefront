@@ -1,0 +1,56 @@
+<section id="grid" @vue:mounted="main">
+  <div class="flex flex-col items-center h-[calc(100%-80px)] mt-8">
+    <div class="w-5/6 justify-center">
+      <div class="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 my-4">
+        <div class="p-2 flex mb-4 justify-center" v-for="product in productChoices">
+          <a class="no-underline" v-bind:href="getProductLink(product)">
+            <img class="h-64 w-64 rounded-lg object-cover" v-bind:src="product.images?.at(0)?.src" />
+            <span class="mx-auto flex text-xs w-64">{{product.title}}</span>
+            <span class="mx-auto flex text-sm w-64">${{getProductPriceRange(product).join(' - ')}}</span>
+          </a>
+        </div>
+      </div>
+    </div>
+</section>
+
+<script type="module" async>
+
+  const vm = PetiteVue.createApp({
+    geolocation: null,
+    productChoices: [],
+    audienceSegments: [],
+
+    async main() {
+
+      // Load storefront details.
+      const params = new URL(window.location.href).searchParams;
+      const storefrontUrl = `https://functions.fresho.workers.dev/merchant/storefront/data.json`;
+      const data = await fetch(`${storefrontUrl}?uuid=${params.get('uuid')}`).then(res => res.json());
+
+      // Load audience details.
+      this.geolocation = params.get('fresho_audience_geolocation');
+      const audienceNames = params.get('fresho_audience_segments')?.split(',') || [];
+      this.audienceSegments = data.audiences.filter(x => audienceNames.includes(x.name));
+      console.log('audience segments:', this.audienceSegments)
+
+      // Randomize the product inventory.
+      this.productChoices = data.products.sort(() => Math.random() - 0.5);
+    },
+
+    getProductLink(product) {
+      const url = new URL(window.location.href);
+      url.searchParams.set('product', product.id);
+      return url.href;
+    },
+
+    getProductPriceRange(product) {
+      if (product.price) return [product.price];
+      const minVariantPrice = Math.min(...product.variants.map(x => x.price));
+      const maxVariantPrice = Math.max(...product.variants.map(x => x.price));
+      if (minVariantPrice === maxVariantPrice) return [minVariantPrice];
+      else return [minVariantPrice, maxVariantPrice];
+    },
+
+  }).mount('#grid');
+
+</script>

@@ -1,0 +1,20 @@
+{
+    "$schema": "https://json.schemastore.org/web-manifest-combined.json",
+    "name": "Fresho Storefront",
+    "short_name": "Fresho Storefront",
+    "theme_color": "#1976d2",
+    "background_color": "#000000",
+    "display": "standalone",
+    "scope": "./",
+    "start_url": "/?homescreen=1",
+    "id": "/?homescreen=1",
+    "orientation": "portrait-primary",
+    "icons": [
+        {
+            "src": "static/logo.jpg",
+            "sizes": "512x512",
+            "type": "image/jpg",
+            "purpose": "maskable any"
+        }
+    ]
+}

@@ -1,0 +1,30 @@
+<section id="top" @vue:mounted="main">
+
+  <!-- Page logo -->
+  <div class="flex flex-col items-center justify-center h-[96px] pt-[16px]">
+    <img v-show="logo" class="h-full object-contain" :src="logo ?? ''" />
+  </div>
+
+  <!-- Shopping cart -->
+  <!-- TODO -->
+
+</section>
+
+<script type="module" async>
+
+  const vm = PetiteVue.createApp({
+    logo: null,
+
+    async main() {
+
+      // Load storefront details.
+      const params = new URL(window.location.href).searchParams;
+      const storefrontUrl = new URL(`https://functions.fresho.workers.dev/merchant/storefront/data.json`);
+      storefrontUrl.searchParams.set('uuid', params.get('uuid'));
+      storefrontUrl.searchParams.set('fieldnames', ['logo'].join(','));
+      const data = await fetch(storefrontUrl).then(res => res.json());
+      this.logo = data.logo;
+    },
+  }).mount('#top');
+
+</script>

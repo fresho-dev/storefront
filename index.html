@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+
+<html class="h-full" lang="en">
+
+<head>
+  <!-- HTML metadata -->
+  <meta charset="UTF-8" />
+  <title>Fresho Storefront</title>
+  <meta name="description" content="E-Commerce platform powered by fresho.dev." />
+  <link rel="icon" type="image/jpg" href="./static/logo.jpg" />
+  <link rel="manifest" href="./manifest.webmanifest" />
+
+  <!-- Social media preview images -->
+  <meta property="og:image" content="./static/logo.jpg">
+
+  <!-- Behave like a nativ app on the device homescreen -->
+  <meta name="theme-color" content="#000000">
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+
+  <!-- Homescreen icons -->
+  <link rel="apple-touch-icon" href="./static/logo.jpg" />
+
+  <!-- Capabilities-related metadata -->
+  <meta name="viewport" content="width=device-width,minimum-scale=1,maximum-scale=1,user-scalable=no" />
+
+  <!-- Third party imports -->
+  <script src="https://unpkg.com/petite-vue"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.1/css/all.min.css">
+
+  <!-- Service worker registration -->
+  <script>
+    navigator.serviceWorker.register('./js/sw.js').then(event => {
+      console.log('ServiceWorker registration successful:', event);
+    }, function (err) {
+      alert(`ServiceWorker registration failed: ${err}`);
+    });
+  </script>
+</head>
+
+<body class="h-full">
+
+  <!-- Top Menu -->
+  <header>
+    <div data-fragment="./fragments/top.html"></div>
+  </header>
+
+  <!-- Main Content -->
+  <main></main>
+
+</body>
+
+<script type="module" aysnc>
+  import { loadFragment, loadAllFragments } from "./js/fragments.js";
+  await loadAllFragments(document.body);
+
+  const params = new URL(window.location.href).searchParams;
+  if (params.has('product')) {
+    await loadFragment(`./fragments/product.html`, document.querySelector('main'));
+  } else {
+    await loadFragment(`./fragments/home.html`, document.querySelector('main'));
+  }
+</script>
+
+</html>
